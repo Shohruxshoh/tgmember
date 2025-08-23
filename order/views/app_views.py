@@ -104,7 +104,8 @@ class SOrderLinkListAPIView(generics.ListAPIView):
 
         telegram_accounts_qs = TelegramAccount.objects.select_related('user').filter(
             telegram_id__in=telegram_ids,
-            is_active=True
+            is_active=True,
+            user=user,
         ).values_list("id", flat=True)
         # telegram_account_ids = list(telegram_accounts_qs.values_list('id', flat=True))
 
