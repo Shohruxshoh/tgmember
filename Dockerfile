@@ -25,5 +25,5 @@ RUN chmod +x /app/entrypoint.sh
 #RUN mkdir -p /app/static /app/media && chown -R appuser:appuser /app
 #USER appuser
 
-CMD ["gunicorn", "core.asgi:application", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "8", "--threads", "2", "--timeout", "120", "--log-level", "warning"]
+#CMD ["gunicorn", "core.asgi:application", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "8", "--threads", "2", "--timeout", "120", "--log-level", "warning"]
 ENTRYPOINT ["/app/entrypoint.sh"]

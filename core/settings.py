@@ -111,8 +111,8 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", 5432),
-        "CONN_MAX_AGE": 300,  # persistent connection
-        "ATOMIC_REQUESTS": True,  # har bir request transactionda ishlaydi
+        "CONN_MAX_AGE": 300,   # persistent connection
+        "ATOMIC_REQUESTS": False,   # faqat kerakli viewlarda @transaction.atomic ishlating
         "OPTIONS": {
             "options": "-c search_path=public"
         },
