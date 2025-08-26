@@ -291,7 +291,12 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [("redis", 6379)],  # local Redis server
+            # Parolni environmentdan olish xavfsizroq
+            "hosts": [(
+                "redis",
+                6379,
+                {"password": os.environ.get("REDIS_PASSWORD", "your_password")}
+            )],
         },
     },
 }
@@ -299,7 +304,10 @@ CHANNEL_LAYERS = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.environ.get("REDIS_URL", "redis://redis:6379/0"),
+        "LOCATION": os.environ.get(
+            "REDIS_URL",
+            "redis://:your_password@redis:6379/0"   # ← parol bilan yozildi
+        ),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
@@ -307,6 +315,7 @@ CACHES = {
         "TIMEOUT": 60 * 60,  # 1 soat
     }
 }
+
 
 # Security
 SECURE_BROWSER_XSS_FILTER = True
