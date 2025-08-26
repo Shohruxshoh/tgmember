@@ -10,6 +10,7 @@ from service.serializers.app_serializers import SCountrySerializer, SServiceSeri
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from drf_spectacular.utils import extend_schema, OpenApiResponse
+from django.views.decorators.vary import vary_on_headers
 
 
 @extend_schema(
@@ -20,7 +21,10 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse
         **COMMON_RESPONSES
     }
 )
-@method_decorator(cache_page(60 * 5, key_prefix="cache_country"), name='dispatch')  # 5 daqiqaga cache
+@method_decorator(
+    [cache_page(60 * 5, key_prefix="cache_country"), vary_on_headers("Authorization")],
+    name="dispatch"
+)
 class SCountryListAPIView(generics.ListAPIView):
     queryset = Country.objects.filter(is_active=True).order_by('name')
     serializer_class = SCountrySerializer
@@ -35,7 +39,10 @@ class SCountryListAPIView(generics.ListAPIView):
         **COMMON_RESPONSES
     }
 )
-@method_decorator(cache_page(60 * 5, key_prefix="cache_service"), name='dispatch')  # 5 daqiqaga cache
+@method_decorator(
+    [cache_page(60 * 5, key_prefix="cache_service"), vary_on_headers("Authorization")],
+    name="dispatch"
+)
 class SServiceListAPIView(generics.ListAPIView):
     queryset = Service.objects.select_related('country').filter(is_active=True).order_by('-created_at')
     serializer_class = SServiceSerializer
