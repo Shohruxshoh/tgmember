@@ -30,7 +30,6 @@ SECRET_KEY = os.getenv("SECRET_KEY", 'secret_key')
 DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
-print(ALLOWED_HOSTS)
 # ALLOWED_HOSTS = ['*']
 
 # Application definition
