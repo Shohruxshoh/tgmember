@@ -28,7 +28,7 @@ from django.views.decorators.vary import vary_on_headers
 class SCountryListAPIView(generics.ListAPIView):
     queryset = Country.objects.filter(is_active=True).order_by('name')
     serializer_class = SCountrySerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 @extend_schema(
@@ -46,7 +46,7 @@ class SCountryListAPIView(generics.ListAPIView):
 class SServiceListAPIView(generics.ListAPIView):
     queryset = Service.objects.select_related('country').filter(is_active=True).order_by('-created_at')
     serializer_class = SServiceSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['country', 'category', 'post']
     search_fields = ['category']
