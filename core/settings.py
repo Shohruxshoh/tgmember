@@ -111,7 +111,7 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", 5432),
-        "CONN_MAX_AGE": 100,  # persistent connection
+        "CONN_MAX_AGE": 300,  # persistent connection
         "ATOMIC_REQUESTS": True,  # har bir request transactionda ishlaydi
         "OPTIONS": {
             "options": "-c search_path=public"
@@ -306,7 +306,7 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": os.environ.get(
             "REDIS_URL",
-            "redis://:your_password@redis:6379/0"   # ← parol bilan yozildi
+            "redis://:redis:6379/0"   # ← parol bilan yozildi
         ),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
