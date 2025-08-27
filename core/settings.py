@@ -25,7 +25,6 @@ load_dotenv(dotenv_path=BASE_DIR / '.env')
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY", 'secret_key')
 
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -111,8 +110,9 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD"),
         "HOST": os.environ.get("DB_HOST", "localhost"),
         "PORT": os.environ.get("DB_PORT", 5432),
-        "CONN_MAX_AGE": 300,   # persistent connection
-        "ATOMIC_REQUESTS": False,   # faqat kerakli viewlarda @transaction.atomic ishlating
+        "CONN_MAX_AGE": 60,  # persistent connection
+        'CONN_HEALTH_CHECKS': True,
+        "ATOMIC_REQUESTS": False,  # faqat kerakli viewlarda @transaction.atomic ishlating
         "OPTIONS": {
             "options": "-c search_path=public"
         },
@@ -306,7 +306,7 @@ CACHES = {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": os.environ.get(
             "REDIS_URL",
-            "redis://:redis:6379/0"   # ← parol bilan yozildi
+            "redis://:redis:6379/0"  # ← parol bilan yozildi
         ),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
@@ -315,7 +315,6 @@ CACHES = {
         "TIMEOUT": 60 * 60,  # 1 soat
     }
 }
-
 
 # Security
 SECURE_BROWSER_XSS_FILTER = True
