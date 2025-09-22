@@ -171,7 +171,7 @@ services:
         context: .
         dockerfile: Dockerfile
       entrypoint: /app/entrypoint.sh
-      command: celery -A core flower --port=5555 --broker=redis://:$(REDIS_PASSWORD)@redis:6379/0
+      command: celery -A core flower --port=5555 --broker=redis://:${REDIS_PASSWORD}@redis:6379/0
       env_file:
         - .env
       volumes:
