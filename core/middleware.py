@@ -117,7 +117,7 @@ class JsonRequestLogMiddleware(MiddlewareMixin):
 
     def process_response(self, request: HttpRequest, response: HttpResponse) -> HttpResponse:
         """Faqat 500+ status codelarni log qilish"""
-        if not request.path.startswith('/api/') or response.status_code < 500:
+        if not request.path.startswith('/api/') or response.status_code < 400:
             return response
 
         processing_time = time.time() - getattr(request, '_start_time', time.time())

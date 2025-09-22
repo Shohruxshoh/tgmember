@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'corsheaders',
     'channels',
+    "django_prometheus",
+    "django_celery_beat",
     # 'silk',
 
     'users',
@@ -61,6 +63,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     "corsheaders.middleware.CorsMiddleware",
@@ -71,6 +74,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # 'silk.middleware.SilkyMiddleware',
     'core.middleware.JsonRequestLogMiddleware',
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = 'core.urls.urls'
@@ -102,20 +106,32 @@ ASGI_APPLICATION = 'core.asgi.application'  # loyihangiz nomi asosida
 #         'NAME': BASE_DIR / 'db.sqlite3',
 #     }
 # }
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.environ.get("DB_NAME"),
+#         "USER": os.environ.get("DB_USER"),
+#         "PASSWORD": os.environ.get("DB_PASSWORD"),
+#         "HOST": os.environ.get("DB_HOST", "localhost"),
+#         "PORT": os.environ.get("DB_PORT", 5432),
+#         "CONN_MAX_AGE": 60,  # persistent connection
+#         'CONN_HEALTH_CHECKS': True,
+#         "ATOMIC_REQUESTS": False,  # faqat kerakli viewlarda @transaction.atomic ishlating
+#         "OPTIONS": {
+#             "options": "-c search_path=public"
+#         },
+#     }
+# }
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("DB_NAME"),
-        "USER": os.environ.get("DB_USER"),
-        "PASSWORD": os.environ.get("DB_PASSWORD"),
-        "HOST": os.environ.get("DB_HOST", "localhost"),
-        "PORT": os.environ.get("DB_PORT", 5432),
-        "CONN_MAX_AGE": 60,  # persistent connection
-        'CONN_HEALTH_CHECKS': True,
-        "ATOMIC_REQUESTS": False,  # faqat kerakli viewlarda @transaction.atomic ishlating
-        "OPTIONS": {
-            "options": "-c search_path=public"
-        },
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST", "pgbouncer"),  # faqat PgBouncer orqali
+        "PORT": os.getenv("DB_PORT", 6432),  # PgBouncer porti
+        "CONN_MAX_AGE": 0,  # PgBouncer pooling qiladi, shuning uchun 0
     }
 }
 
@@ -227,7 +243,16 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 20
+    'PAGE_SIZE': 20,
+
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '100/min',  # har bir login qilgan user uchun
+        'anon': '50/min',  # login qilmagan foydalanuvchi uchun
+    }
 }
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
@@ -316,6 +341,13 @@ CACHES = {
     }
 }
 
+CELERY_BROKER_URL = os.getenv("REDIS_URL")
+CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Tashkent"
+
 # Security
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -326,3 +358,20 @@ SECURE_HSTS_SECONDS = 31536000  # 1 yil HSTS
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 X_FRAME_OPTIONS = "DENY"  # clickjackingdan himoya
+
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://a5089204b87a.ngrok-free.app",   # sizning ngrok domeningiz
+    "http://api.vipads.uz",
+    "http://185.203.241.191",
+]
+
+import firebase_admin
+from firebase_admin import credentials
+
+FIREBASE_CRED_PATH = os.path.join(BASE_DIR, "firebase.json")
+
+if not firebase_admin._apps:  # qayta init bo‘lmasligi uchun
+    cred = credentials.Certificate(FIREBASE_CRED_PATH)
+    firebase_admin.initialize_app(cred)
+

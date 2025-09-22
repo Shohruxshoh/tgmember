@@ -3,7 +3,7 @@ from rest_framework.generics import CreateAPIView, ListCreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
+from users.tasks import send_email
 from service.schemas import COMMON_RESPONSES
 from users.models import User, TelegramAccount
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -47,20 +47,21 @@ class SRegisterGoogleView(CreateAPIView):
 
 
 class SLoginGoogleView(APIView):
-    @extend_schema(
-        request=SLoginGoogleSerializer,
-        responses={
-            200: OpenApiExample(
-                name="Login successful",
-                value={
-                    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
-                    "access": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
-                },
-                response_only=True,
-            ),
-            **COMMON_RESPONSES
-        },
-    )
+    # @extend_schema(
+    #     request=SLoginGoogleSerializer,
+    #     responses={
+    #         200: OpenApiExample(
+    #             name="Login successful",
+    #             value={
+    #                 "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
+    #                 "access": "eyJ0eXAiOiJKV1QiLCJhbGciOi...",
+    #             },
+    #             response_only=True,
+    #         ),
+    #         **COMMON_RESPONSES
+    #     },
+    # )
+    @extend_schema(exclude=True)
     def post(self, request, *args, **kwargs):
         serializer = SLoginGoogleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -98,7 +99,7 @@ class SPasswordResetEmailView(APIView):
     def post(self, request):
         serializer = SPasswordResetEmailRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(request)
+        send_email.delay(serializer.validated_data['email'])
         return Response({"message": "A password reset link has been sent to your email."}, status=status.HTTP_200_OK)
 
 

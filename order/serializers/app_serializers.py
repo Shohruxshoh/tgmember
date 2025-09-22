@@ -363,12 +363,12 @@ class TelegramListSerializer(serializers.ListSerializer):
 
         # 2️⃣ Faqat keraklilarni DB dan olish (is_active va cutoff_time bo‘yicha filter)
         members = list(
-            OrderMember.objects.filter(
+            OrderMember.objects.select_related('telegram', 'order').filter(
                 telegram__telegram_id__in=all_telegram_ids,
                 order_id__in=all_order_ids,
                 is_active=True,
                 joined_at__lt=cutoff_time
-            ).select_related('telegram')
+            )
         )
 
         # 3️⃣ Mapping yaratish

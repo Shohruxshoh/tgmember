@@ -36,7 +36,7 @@ class TelegramAccount(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=["telegram_id", 'user', "is_active"]),  # tezkor qidiruv uchun composite index
+            models.Index(fields=["user", "is_active"]),  # tezkor qidiruv uchun composite index
         ]
 
     def __str__(self):

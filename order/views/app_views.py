@@ -1,13 +1,10 @@
-from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, OpenApiExample
 from rest_framework import permissions, generics, status
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
-# from silk.profiling.profiler import silk_profile
 from order.enums import Status
 from order.models import Order, OrderMember
-# from order.utils import explain_analyze
 from users.models import TelegramAccount
 from order.permissions import IsOwnerOrReadOnly
 from order.serializers.app_serializers import SOrderSerializer, SOrderDetailSerializer, SOrderLinkCreateSerializer, \
@@ -24,7 +21,8 @@ from asgiref.sync import async_to_sync
 from service.schemas import COMMON_RESPONSES
 from django.utils.timezone import now
 from datetime import timedelta
-from django.db.models import F, OuterRef, Subquery, Exists, Count, Q, IntegerField
+from django.db.models import  OuterRef, Exists, Count, Q
+from order.tasks import process_telegram_checklist
 
 
 @extend_schema(
@@ -459,10 +457,14 @@ class TelegramCheckListAPIView(APIView):
     def post(self, request):
         serializer = TelegramListSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
+        # Fon jarayonda ishlash uchun Celery chaqirish
+        process_telegram_checklist.delay(serializer.validated_data, request.user.id)
+
         return Response(
-            {"message": "Tekshiruv yakunlandi, kerakli o'zgarishlar kiritildi."},
+            {"message": "Task yuborildi, fon jarayonida bajariladi."},
             status=status.HTTP_200_OK
         )
+
 
 # class SOrderWithLinksChildCreateAPIView(APIView):
 #     permission_classes = [permissions.IsAuthenticated]
@@ -485,3 +487,82 @@ class TelegramCheckListAPIView(APIView):
 #         serializer.is_valid(raise_exception=True)
 #         result = serializer.save()
 #         return Response(result, status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="telegram_id",
+            type=str,
+            location=OpenApiParameter.QUERY,
+            required=True,
+            many=True,
+            style='form',
+            explode=True,
+            description="Telegram ID lar ro'yxati (?telegram_id=123&telegram_id=456)"
+        )
+    ],
+    responses={
+        200: OpenApiResponse(response=SOrderLinkListSerializer),
+        **COMMON_RESPONSES
+    }
+)
+class SOrderLinkListAPIView2(generics.ListAPIView):
+    serializer_class = SOrderLinkListSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]  # , SearchFilter
+    filterset_class = OrderLinkFilter
+
+    # search_fields = ['link', 'channel_name']
+
+    # @silk_profile()
+    def get_queryset(self):
+        user = self.request.user
+        telegram_ids = self.request.query_params.getlist('telegram_id')
+
+        if not telegram_ids:
+            return Order.objects.none()
+
+        telegram_accounts_qs = TelegramAccount.objects.filter(
+            telegram_id__in=telegram_ids,
+            is_active=True,
+            user=user,
+        ).values_list("id", flat=True)
+        three_days_ago = now() - timedelta(days=3)
+
+        if not telegram_accounts_qs:
+            return Order.objects.none()
+
+        recent_members = OrderMember.objects.filter(
+            order=OuterRef("pk"),
+            user=user,  # 🔥 faqat shu user'ga tegishli OrderMember lar
+            telegram_id__in=telegram_accounts_qs,
+            joined_at__gt=three_days_ago,
+        )
+
+        orders = (
+            Order.objects
+            .select_related("parent")  # faqat kerakli FK
+            .only("id", "link", "channel_name", "channel_id", "parent_id")
+            .filter(is_active=True, status=Status.PROCESSING)
+            .annotate(has_recent_member=Exists(recent_members))
+            .filter(has_recent_member=False)  # yani so‘nggi 3 kunda user member bo‘lmagan
+            .values("id", "link", "channel_name", "channel_id")
+        )
+        # order = [Order(
+        #     user=user,
+        #     service_id=1,
+        #     member=10,
+        #     service_category="kjnl",
+        #     price=10,
+        #     link='link',
+        #     channel_name='channel_name',
+        #     channel_id=555,
+        #     country_code='uz',
+        #     day=3,
+        #     status=Status.PROCESSING,
+        # ) for _ in range(1000)]
+        # Order.objects.bulk_create(order)
+        # test = [OrderMember(order_id=2, telegram_id=2, user_id=1, vip=3, member_duration=3) for _ in range(10000)]
+        # OrderMember.objects.bulk_create(test)
+        return orders
