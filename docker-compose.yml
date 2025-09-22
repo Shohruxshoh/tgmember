@@ -28,8 +28,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - django_static:/app/static
-      - django_media:/app/media
+      - django_static:/app/static:rw
+      - django_media:/app/media:rw
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/8080' || exit 1" ]
