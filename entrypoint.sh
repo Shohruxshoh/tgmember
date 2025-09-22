@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "📂 static va media uchun ruxsat sozlanyapti..."
-mkdir -p /app/static /app/media
-chown -R appuser:appuser /app/static /app/media || true
 
 echo "⏳ Database tayyormi, tekshirilmoqda..."
 python - <<'PYCODE'
