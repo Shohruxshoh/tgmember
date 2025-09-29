@@ -1,7 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.db.models import Sum
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.db import transaction
+from order.enums import PaidEnum
 
 
 # Create your models here.
@@ -22,6 +23,14 @@ class User(AbstractUser):
     @property
     def balance(self):
         return self.user_balance.balance
+
+    @property
+    def pending(self):
+        return (
+                self.ordermember_set
+                .filter(paid=PaidEnum.PENDING)
+                .aggregate(total=Sum("vip"))["total"] or 0
+        )
 
 
 class TelegramAccount(models.Model):

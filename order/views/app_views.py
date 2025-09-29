@@ -3,13 +3,13 @@ from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParamet
 from rest_framework import permissions, generics, status
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
-from order.enums import Status
+from order.enums import Status, PaidEnum
 from order.models import Order, OrderMember
 from users.models import TelegramAccount
 from order.permissions import IsOwnerOrReadOnly
 from order.serializers.app_serializers import SOrderSerializer, SOrderDetailSerializer, SOrderLinkCreateSerializer, \
     STelegramBackfillSerializer, SAddVipSerializer, SOrderLinkListSerializer, SCheckAddedChannelSerializer, \
-    TelegramListSerializer
+    TelegramListSerializer, SOrderMemberSerializer
 from order.filters import OrderFilter, OrderLinkFilter
 from order.services import save_links_for_order
 from order.telegram_fetch import fetch_prior_message_urls
@@ -21,8 +21,9 @@ from asgiref.sync import async_to_sync
 from service.schemas import COMMON_RESPONSES
 from django.utils.timezone import now
 from datetime import timedelta
-from django.db.models import  OuterRef, Exists, Count, Q
+from django.db.models import OuterRef, Exists, Count, Q, F
 from order.tasks import process_telegram_checklist
+from django.db.models import Sum
 
 
 @extend_schema(
@@ -528,7 +529,7 @@ class SOrderLinkListAPIView2(generics.ListAPIView):
             is_active=True,
             user=user,
         ).values_list("id", flat=True)
-        three_days_ago = now() - timedelta(days=3)
+        three_days_ago = now() - timedelta(days=5)
 
         if not telegram_accounts_qs:
             return Order.objects.none()
@@ -566,3 +567,29 @@ class SOrderLinkListAPIView2(generics.ListAPIView):
         # test = [OrderMember(order_id=2, telegram_id=2, user_id=1, vip=3, member_duration=3) for _ in range(10000)]
         # OrderMember.objects.bulk_create(test)
         return orders
+
+
+@extend_schema(
+    responses={
+        200: OpenApiResponse(
+            response=SOrderMemberSerializer
+        ),
+        **COMMON_RESPONSES
+    }
+)
+class OrderMemberListAPIView(generics.ListAPIView):
+    serializer_class = SOrderMemberSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return OrderMember.objects.select_related("order").filter(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        all_pending = (
+                self.get_queryset()
+                .filter(paid=PaidEnum.PENDING)
+                .aggregate(total=Sum("vip"))["total"] or 0
+        )
+        response.data["all_pending"] = all_pending
+        return response

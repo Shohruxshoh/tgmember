@@ -29,7 +29,7 @@ class Service(models.Model):
     country = models.ForeignKey(Country, on_delete=models.PROTECT)
     category = models.CharField(max_length=20, choices=Category.choices, default=Category.MEMBER, db_index=True)
     day = models.ForeignKey(DayOption, on_delete=models.SET_NULL, null=True)
-    price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    price = models.PositiveIntegerField(default=0)
     member = models.PositiveIntegerField(default=0)
     percent = models.PositiveIntegerField(default=0)
     post = models.PositiveIntegerField(default=0)

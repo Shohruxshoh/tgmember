@@ -1,8 +1,10 @@
 from decimal import Decimal
 from django.db import models
-from django.db.models import Count, F, Value, Case, When, ExpressionWrapper
+from django.db.models import Count, F, Value, Case, When, ExpressionWrapper, UniqueConstraint
 from django.db.models import DecimalField
-from order.enums import Status
+from rest_framework.exceptions import ValidationError
+
+from order.enums import Status, PaidEnum
 from service.models import Service
 from users.models import User, TelegramAccount
 
@@ -89,11 +91,20 @@ class OrderMember(models.Model):
     telegram = models.ForeignKey(TelegramAccount, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     vip = models.PositiveIntegerField(default=0)
+    paid = models.CharField(max_length=20, choices=PaidEnum.choices, default=PaidEnum.PENDING)
     member_duration = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        # constraints = [
+        #     # faqatgina is_active=True bo‘lganda unique
+        #     models.UniqueConstraint(
+        #         fields=["order", "telegram", "user"],
+        #         condition=models.Q(is_active=True),
+        #         name="unique_active_order_member"
+        #     )
+        # ]
         indexes = [
             # tez-tez ishlatiladigan querylar uchun composite index
             models.Index(fields=["order", "user", "telegram"]),
@@ -102,6 +113,30 @@ class OrderMember(models.Model):
             # faollik bo‘yicha filter uchun
             models.Index(fields=["is_active"]),
         ]
+
+    # def clean(self):
+    #     """
+    #     Model darajasida validatsiya.
+    #     Shunday order+telegram+user kombinatsiyasida boshqa active yozuv bormi, tekshiradi.
+    #     """
+    #     if self.is_active:
+    #         qs = OrderMember.objects.filter(
+    #             order=self.order,
+    #             telegram=self.telegram,
+    #             user=self.user,
+    #             is_active=True,
+    #         )
+    #         if self.pk:  # agar update bo‘lsa, o‘zi chiqib ketadi
+    #             qs = qs.exclude(pk=self.pk)
+    #
+    #         if qs.exists():
+    #             raise ValidationError(
+    #                 "Bu order, telegram va user kombinatsiyasi uchun faqat bitta active yozuv bo‘lishi mumkin.")
+    #
+    # def save(self, *args, **kwargs):
+    #     # clean() ni chaqirish → signal yoki DRF serializer oldidan ham ishlaydi
+    #     self.clean()
+    #     super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.email}- {self.order.channel_name}"

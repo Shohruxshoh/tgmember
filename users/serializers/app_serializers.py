@@ -138,10 +138,11 @@ class SPasswordResetConfirmSerializer(serializers.Serializer):
 
 class SUserSerializer(serializers.ModelSerializer):
     balance = serializers.IntegerField(read_only=True)
+    pending = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = User
-        fields = ['email', 'balance']
+        fields = ['email', 'balance', 'pending']
 
 
 class SUserChangeEmailSerializer(serializers.Serializer):

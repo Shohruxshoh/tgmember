@@ -5,7 +5,7 @@ from rest_framework import serializers
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from balance.models import Balance, Vip
-from order.enums import Status
+from order.enums import Status, PaidEnum
 from service.models import Service
 from order.models import Order, OrderMember
 from users.models import TelegramAccount
@@ -406,3 +406,11 @@ class TelegramListSerializer(serializers.ListSerializer):
                 user.user_balance.save()
 
         return data
+
+
+class SOrderMemberSerializer(serializers.ModelSerializer):
+    channel_name = serializers.CharField(source="order.channel_name", read_only=True)
+
+    class Meta:
+        model = OrderMember
+        fields = ('channel_name', 'vip', 'member_duration', 'paid')

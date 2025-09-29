@@ -163,7 +163,7 @@ class SUserMeAPIView(APIView):
         try:
             user = User.objects.get(id=self.request.user.id)
         except User.DoesNotExist:
-            return Response({"detail": "User topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = SUserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)

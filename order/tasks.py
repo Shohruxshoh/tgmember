@@ -1,4 +1,6 @@
 from celery import shared_task
+
+from .enums import PaidEnum
 from .models import OrderMember
 from users.models import User
 from django.db.models import Sum, F
@@ -20,7 +22,7 @@ def process_telegram_checklist(data, user_id):
     except User.DoesNotExist:
         return {"error": "User not found"}
 
-    cutoff_time = now() - timedelta(days=2, hours=20)
+    cutoff_time = now() - timedelta(days=2, hours=12)
 
     # 1️⃣ Telegram va order ID larni yig‘ish
     all_telegram_ids = [item["telegram_id"] for item in data]
@@ -38,7 +40,7 @@ def process_telegram_checklist(data, user_id):
     user_vip = qs.aggregate(total_vip=Sum("vip"))["total_vip"] or 0
 
     # 4️⃣ bulk_update o‘rniga bitta update()
-    updated_count = qs.update(is_active=False)
+    updated_count = qs.update(is_active=False, paid=PaidEnum.PAID)
 
     # 5️⃣ Balansni yangilash
     if user_vip and hasattr(user, "user_balance"):
@@ -50,12 +52,11 @@ def process_telegram_checklist(data, user_id):
 
 @shared_task
 def delete_expired_subscriptions():
-    cutoff_time = now() - timedelta(minutes=1)
+    cutoff_time = now() - timedelta(days=5)
     qs = OrderMember.objects.filter(is_active=True, joined_at__lt=cutoff_time)
     count = qs.count()
-    qs.update(is_active=False)
+    qs.update(is_active=False, paid=PaidEnum.UNPAID)
     return {"deleted": count}
-
 
 
 
