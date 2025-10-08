@@ -9,7 +9,7 @@ urlpatterns = [
     path('orders/<int:pk>/', SOrderDetailAPIView.as_view()),
     # path('create-with-links/', SOrderWithLinksChildCreateAPIView.as_view()),
     path('order-create-link/', SOrderLinkCreateAPIView.as_view()),
-    path('order-posts-create/', STelegramBackfillAPIView.as_view()),
+    # path('order-posts-create/', STelegramBackfillAPIView.as_view()),
     path('subscribe-channel/', SAddVipAPIView.as_view()),
     path('check-channel/', SCheckAddedChannelAPIView.as_view()),
     path('my-telegram-channels/', UserTelegramChannelsView.as_view(), name='my-telegram-channels'),

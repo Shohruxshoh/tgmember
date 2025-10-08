@@ -12,8 +12,8 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderMember)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'telegram', 'order', 'joined_at', 'is_active', 'member_duration')
-    list_filter = ('is_active',)
+    list_display = ('id', 'user', 'telegram', 'order', 'paid', 'joined_at', 'is_active', 'member_duration')
+    list_filter = ('is_active', 'paid', 'joined_at')
     search_fields = ('user__username',)
     ordering = ('-joined_at',)
 # admin.site.register(OrderMember)

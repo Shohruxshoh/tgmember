@@ -93,18 +93,22 @@ class OrderMember(models.Model):
     vip = models.PositiveIntegerField(default=0)
     paid = models.CharField(max_length=20, choices=PaidEnum.choices, default=PaidEnum.PENDING)
     member_duration = models.PositiveIntegerField(default=0)
+    # is_subscription = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
 
+    # 🆕 Denormalizatsiya maydoni
+    pair_key = models.CharField(max_length=100, db_index=True, editable=False)
+
     class Meta:
-        # constraints = [
-        #     # faqatgina is_active=True bo‘lganda unique
-        #     models.UniqueConstraint(
-        #         fields=["order", "telegram", "user"],
-        #         condition=models.Q(is_active=True),
-        #         name="unique_active_order_member"
-        #     )
-        # ]
+        constraints = [
+            # faqatgina is_active=True bo‘lganda unique
+            models.UniqueConstraint(
+                fields=["order", "telegram", "user"],
+                condition=models.Q(is_active=True),
+                name="unique_active_order_member"
+            )
+        ]
         indexes = [
             # tez-tez ishlatiladigan querylar uchun composite index
             models.Index(fields=["order", "user", "telegram"]),
@@ -112,31 +116,41 @@ class OrderMember(models.Model):
             models.Index(fields=["joined_at"]),
             # faollik bo‘yicha filter uchun
             models.Index(fields=["is_active"]),
+            # 🆕 pair_key uchun index
+            models.Index(fields=["pair_key"]),
         ]
 
-    # def clean(self):
-    #     """
-    #     Model darajasida validatsiya.
-    #     Shunday order+telegram+user kombinatsiyasida boshqa active yozuv bormi, tekshiradi.
-    #     """
-    #     if self.is_active:
-    #         qs = OrderMember.objects.filter(
-    #             order=self.order,
-    #             telegram=self.telegram,
-    #             user=self.user,
-    #             is_active=True,
-    #         )
-    #         if self.pk:  # agar update bo‘lsa, o‘zi chiqib ketadi
-    #             qs = qs.exclude(pk=self.pk)
-    #
-    #         if qs.exists():
-    #             raise ValidationError(
-    #                 "Bu order, telegram va user kombinatsiyasi uchun faqat bitta active yozuv bo‘lishi mumkin.")
-    #
-    # def save(self, *args, **kwargs):
-    #     # clean() ni chaqirish → signal yoki DRF serializer oldidan ham ishlaydi
-    #     self.clean()
-    #     super().save(*args, **kwargs)
+    def clean(self):
+        """
+        Model darajasida validatsiya.
+        Shunday order+telegram+user kombinatsiyasida boshqa active yozuv bormi, tekshiradi.
+        """
+        if self.is_active:
+            qs = OrderMember.objects.filter(
+                order=self.order,
+                telegram=self.telegram,
+                user=self.user,
+                is_active=True,
+            )
+            if self.pk:  # agar update bo‘lsa, o‘zi chiqib ketadi
+                qs = qs.exclude(pk=self.pk)
+
+            if qs.exists():
+                raise ValidationError(
+                    "Bu order, telegram va user kombinatsiyasi uchun faqat bitta active yozuv bo‘lishi mumkin.")
+
+    def save(self, *args, **kwargs):
+        """
+        - pair_key ni avtomatik to‘ldiradi
+        - clean() orqali validatsiyani saqlaydi
+        """
+        if self.telegram and self.order:
+            # Order modelida `channel_id` bo‘lishi kerak
+            self.pair_key = f"{self.telegram.telegram_id}:{self.order.channel_id}"
+
+        # Validatsiya chaqiriladi
+        self.clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.email}- {self.order.channel_name}"

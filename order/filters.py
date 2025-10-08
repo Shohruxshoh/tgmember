@@ -1,5 +1,7 @@
 from django_filters import rest_framework as filters
-from order.models import Order
+
+from order.enums import PaidEnum
+from order.models import Order, OrderMember
 
 
 class OrderFilter(filters.FilterSet):
@@ -14,3 +16,11 @@ class OrderLinkFilter(filters.FilterSet):
     class Meta:
         model = Order
         fields = ['service__category']
+
+
+class OrderMemberFilter(filters.FilterSet):
+    paid = filters.ChoiceFilter(choices=PaidEnum.choices)
+
+    class Meta:
+        model = OrderMember
+        fields = ['paid']

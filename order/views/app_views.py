@@ -1,4 +1,6 @@
+from django.db.models.functions import Coalesce
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter, OpenApiExample
 from rest_framework import permissions, generics, status
 from rest_framework.filters import SearchFilter, OrderingFilter
@@ -10,7 +12,7 @@ from order.permissions import IsOwnerOrReadOnly
 from order.serializers.app_serializers import SOrderSerializer, SOrderDetailSerializer, SOrderLinkCreateSerializer, \
     STelegramBackfillSerializer, SAddVipSerializer, SOrderLinkListSerializer, SCheckAddedChannelSerializer, \
     TelegramListSerializer, SOrderMemberSerializer
-from order.filters import OrderFilter, OrderLinkFilter
+from order.filters import OrderFilter, OrderLinkFilter, OrderMemberFilter
 from order.services import save_links_for_order
 from order.telegram_fetch import fetch_prior_message_urls
 from service.models import Service
@@ -21,7 +23,7 @@ from asgiref.sync import async_to_sync
 from service.schemas import COMMON_RESPONSES
 from django.utils.timezone import now
 from datetime import timedelta
-from django.db.models import OuterRef, Exists, Count, Q, F
+from django.db.models import OuterRef, Exists, Count, Q, F, IntegerField, Value, Subquery
 from order.tasks import process_telegram_checklist
 from django.db.models import Sum
 
@@ -511,12 +513,9 @@ class TelegramCheckListAPIView(APIView):
 class SOrderLinkListAPIView2(generics.ListAPIView):
     serializer_class = SOrderLinkListSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]  # , SearchFilter
+    filter_backends = [DjangoFilterBackend]
     filterset_class = OrderLinkFilter
 
-    # search_fields = ['link', 'channel_name']
-
-    # @silk_profile()
     def get_queryset(self):
         user = self.request.user
         telegram_ids = self.request.query_params.getlist('telegram_id')
@@ -529,27 +528,31 @@ class SOrderLinkListAPIView2(generics.ListAPIView):
             is_active=True,
             user=user,
         ).values_list("id", flat=True)
-        three_days_ago = now() - timedelta(days=5)
 
         if not telegram_accounts_qs:
             return Order.objects.none()
 
-        recent_members = OrderMember.objects.filter(
-            order=OuterRef("pk"),
-            user=user,  # 🔥 faqat shu user'ga tegishli OrderMember lar
-            telegram_id__in=telegram_accounts_qs,
-            joined_at__gt=three_days_ago,
-        )
-
+        # Annotatsiya orqali har bir Order uchun nechta telegram_id mavjudligini sanaymiz
         orders = (
             Order.objects
-            .select_related("parent")  # faqat kerakli FK
+            .select_related("parent")
             .only("id", "link", "channel_name", "channel_id", "parent_id")
             .filter(is_active=True, status=Status.PROCESSING)
-            .annotate(has_recent_member=Exists(recent_members))
-            .filter(has_recent_member=False)  # yani so‘nggi 3 kunda user member bo‘lmagan
+            .annotate(
+                member_count=Count(
+                    "members",
+                    filter=Q(
+                        members__user=user,
+                        members__telegram_id__in=telegram_accounts_qs,
+                        members__is_active=True,
+                    ),
+                    distinct=True
+                )
+            )
+            .filter(member_count__lt=len(telegram_accounts_qs))
             .values("id", "link", "channel_name", "channel_id")
         )
+
         # order = [Order(
         #     user=user,
         #     service_id=1,
@@ -570,14 +573,23 @@ class SOrderLinkListAPIView2(generics.ListAPIView):
 
 
 @extend_schema(
-    responses={
-        200: OpenApiResponse(
-            response=SOrderMemberSerializer
+    parameters=[
+        OpenApiParameter(
+            name='paid',
+            type=OpenApiTypes.STR,
+            enum=[e.value for e in PaidEnum],
+            description='Filter by payment status',
+            location=OpenApiParameter.QUERY
         ),
+    ],
+    responses={
+        200: OpenApiResponse(response=SOrderMemberSerializer),
         **COMMON_RESPONSES
     }
 )
 class OrderMemberListAPIView(generics.ListAPIView):
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = OrderMemberFilter
     serializer_class = SOrderMemberSerializer
     permission_classes = [permissions.IsAuthenticated]
 
