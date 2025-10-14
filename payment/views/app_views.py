@@ -2,6 +2,8 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import permissions, status, views
 from rest_framework.response import Response
+
+from balance.enums import CurrencyEnum
 from balance.models import OrderBuy, Buy, Currency
 from django.shortcuts import get_object_or_404
 from payment.utils import generate_url
@@ -30,10 +32,10 @@ class PaymentEncodeAPIView(views.APIView):
         s_currency = Currency.objects.filter(is_active=True).first()
 
         if not s_currency:
-            return Response({"detail": "Active currency not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"detail": "Active currency not found."}, status=status.HTTP_404_NOT_FOUND)
 
         price = Decimal(s_currency.som) * Decimal(buy.price)
-        order = OrderBuy.objects.create(buy=buy, user=user, coin=buy.coin, price=price)
+        order = OrderBuy.objects.create(buy=buy, user=user, coin=buy.coin, price=price, currency=CurrencyEnum.SUM)
 
         param = generate_url(user, buy, order)
         return Response({"message": f"https://checkout.paycom.uz/{param}"}, status=status.HTTP_201_CREATED)
