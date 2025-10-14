@@ -78,6 +78,11 @@ def process_telegram_checklist(data, user_id):
         f"{item['telegram_id']}:{ch['channel_id']}"
         for item in data for ch in item["channels"]
     }
+    tttt = [
+        f"{item['telegram_id']}:{ch['channel_id']}"
+        for item in data for ch in item["channels"]
+    ]
+    print(85, f"tttt: {tttt}")
     print(81, f"all_pair_keys {all_pair_keys}")
     # Agar bo‘sh kelsa — barcha aktivlarni o‘chir
     if not all_pair_keys:
