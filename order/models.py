@@ -48,7 +48,7 @@ class Order(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     link = models.CharField(max_length=200)
     channel_name = models.CharField(max_length=200)
-    channel_id = models.IntegerField(default=0)
+    channel_id = models.BigIntegerField(default=0)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     member = models.PositiveIntegerField(default=0)
     service_category = models.CharField(max_length=200, null=True, blank=True, db_index=True)
