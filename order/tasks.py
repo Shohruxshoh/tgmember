@@ -78,7 +78,7 @@ def process_telegram_checklist(data, user_id):
         f"{item['telegram_id']}:{ch['channel_id']}"
         for item in data for ch in item["channels"]
     }
-
+    print(81, f"all_pair_keys {all_pair_keys}")
     # Agar bo‘sh kelsa — barcha aktivlarni o‘chir
     if not all_pair_keys:
         base_qs = OrderMember.objects.filter(user_id=user_id, is_active=True)
@@ -96,6 +96,8 @@ def process_telegram_checklist(data, user_id):
         }
 
     base_qs = OrderMember.objects.filter(user_id=user_id, is_active=True)
+    al = [o.pair_key for o in base_qs]
+    print(100, f"pair key {al}")
 
     # 1️⃣ PAID bo‘lishi kerak bo‘lgan yozuvlar
     paid_qs = base_qs.filter(
@@ -103,9 +105,11 @@ def process_telegram_checklist(data, user_id):
         paid=PaidEnum.PENDING,
         joined_at__lt=cutoff_time
     )
+    print(108, f"paid qs {paid_qs}")
 
     # 2️⃣ Faol qoladiganlar (pair_key bor)
     keep_active_ids = base_qs.filter(pair_key__in=all_pair_keys).values_list("id", flat=True)
+    print(112, f"keep_active_ids {keep_active_ids}")
 
     with transaction.atomic():
         locked = base_qs.select_for_update(of=("self",))
