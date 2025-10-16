@@ -1,6 +1,5 @@
 import re
 from django.db.models import F
-from django.utils.timezone import now
 from rest_framework import serializers
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
@@ -270,8 +269,9 @@ class SAddVipSerializer(serializers.Serializer):
                 raise serializers.ValidationError("VIP config not found for this category.")
 
             now = timezone.now()
-            members_to_create = [
-                OrderMember(
+            members_to_create = []
+            for tg in selected_telegrams:
+                member = OrderMember(
                     telegram=tg,
                     user=user,
                     order=order,
@@ -280,8 +280,8 @@ class SAddVipSerializer(serializers.Serializer):
                     is_active=True,
                     joined_at=now
                 )
-                for tg in selected_telegrams
-            ]
+                member.prepare_save()
+                members_to_create.append(member)
             created_members = OrderMember.objects.bulk_create(members_to_create, batch_size=50)
 
             # # Balans yangilash (F expression orqali — parallelizmga chidamli)
@@ -334,12 +334,14 @@ class ChannelSerializer(serializers.Serializer):
     order_id = serializers.IntegerField(min_value=1)
     channel_id = serializers.CharField(max_length=255)
 
+
 class TelegramDataSerializer(serializers.Serializer):
     telegram_id = serializers.CharField(max_length=50)
     channels = serializers.ListField(
         child=ChannelSerializer(),
         allow_empty=False
     )
+
 
 class TelegramListSerializer(serializers.ListSerializer):
     child = TelegramDataSerializer()

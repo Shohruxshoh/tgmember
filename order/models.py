@@ -139,17 +139,13 @@ class OrderMember(models.Model):
                 raise ValidationError(
                     "Bu order, telegram va user kombinatsiyasi uchun faqat bitta active yozuv bo‘lishi mumkin.")
 
-    def save(self, *args, **kwargs):
-        """
-        - pair_key ni avtomatik to‘ldiradi
-        - clean() orqali validatsiyani saqlaydi
-        """
+    def prepare_save(self):
         if self.telegram and self.order:
-            # Order modelida `channel_id` bo‘lishi kerak
             self.pair_key = f"{self.telegram.telegram_id}:{self.order.channel_id}"
-
-        # Validatsiya chaqiriladi
         self.clean()
+
+    def save(self, *args, **kwargs):
+        self.prepare_save()
         super().save(*args, **kwargs)
 
     def __str__(self):

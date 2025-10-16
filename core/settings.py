@@ -361,7 +361,6 @@ X_FRAME_OPTIONS = "DENY"  # clickjackingdan himoya
 
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://a5089204b87a.ngrok-free.app",   # sizning ngrok domeningiz
     "http://api.vipads.uz",
     "http://185.203.241.191",
 ]
